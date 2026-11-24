@@ -4,31 +4,40 @@ Air AE is a small Windows system-tray utility that watches your Downloads folder
 
 ## Features
 
-- Runs quietly in the Windows system tray.
-- Enables automatic startup when first launched.
-- Watches the current user's Downloads folder.
-- Waits for a ZIP download to finish before opening it.
-- Extracts each archive into its own new folder beside the ZIP.
-- Avoids overwriting existing folders and files.
-- Remembers completed archive fingerprints to avoid repeat extraction.
-- Includes tray controls to pause/resume, open Downloads, open the activity log, change startup behavior, and exit.
+- Runs quietly in the Windows system tray and can start with Windows.
+- Watches Downloads for new ZIP files and also checks ZIPs already there when it starts.
+- Waits for a download to finish before extracting it.
+- **Default mode:** creates a separate folder for each ZIP, just like the original version.
+- **Direct mode:** extracts the ZIP contents straight into the selected destination folder without creating an extra folder.
+- Settings window to turn notifications on or off, pause automatic extraction, choose the extraction mode and destination, control startup, and optionally delete ZIPs after successful extraction.
+- Extract one ZIP manually or extract all ZIPs in Downloads.
+- Avoids overwriting existing files and folders by choosing unique names.
+- Remembers completed archive fingerprints to avoid extracting the same archive again.
+- Keeps an activity history and reports extraction errors through the log and optional notifications.
+- Rejects ZIP paths that attempt to write outside the chosen destination.
+- Keeps the original ZIP by default.
 
 ## Build
 
 Requires the .NET 8 SDK on Windows.
 
 ```powershell
-dotnet publish AirAE/AirAE.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+dotnet publish AirAE/AirAE.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publish
 ```
 
 The GitHub Actions workflow builds a standalone `AirAE.exe` for Windows x64 and uploads it as the `Air-AE-Windows-x64` workflow artifact.
 
 ## First launch
 
-Run `AirAE.exe`. Air AE adds itself to the current Windows user's startup applications and begins watching the Downloads folder. Right-click its tray icon to pause extraction, open the activity log, change startup behavior, or exit.
+Run `AirAE.exe`. Air AE adds itself to the current Windows user's startup applications by default and begins watching Downloads. Right-click its tray icon to open settings, manually extract ZIP files, open Downloads or the activity history, pause extraction, change startup behavior, or exit.
 
 Settings and activity history are stored under `%LOCALAPPDATA%\AirAE`.
 
+## Extraction modes
+
+- **Separate folder (default):** `Downloads\ArchiveName\...`
+- **Direct:** extracted files go directly into the selected destination, with safe renamed copies if a file already exists.
+
 ## Safety
 
-Air AE extracts ZIP entries only inside a new destination folder and rejects paths that attempt to escape that folder. It does not delete the original ZIP. Only ZIP files are handled in this initial version.
+Air AE extracts ZIP entries only inside the selected destination and rejects paths that attempt to escape it. Existing files are not overwritten. Automatic ZIP deletion is off by default and only happens after a successful extraction. Only ZIP files are supported.
