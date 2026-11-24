@@ -5,7 +5,7 @@ Air AE is a small Windows system-tray utility that watches your Downloads folder
 ## Features
 
 - Runs quietly in the Windows system tray and can start with Windows.
-- Watches Downloads for new ZIP files and also checks ZIPs already there when it starts.
+- Watches Downloads for ZIP files created while Air AE is running. **Existing ZIP files are not automatically extracted at startup.**
 - Waits for a download to finish before extracting it.
 - **Default mode:** creates a separate folder for each ZIP, just like the original version.
 - **Direct mode:** extracts the ZIP contents straight into the selected destination folder without creating an extra folder.
@@ -29,7 +29,7 @@ The GitHub Actions workflow builds a standalone `AirAE.exe` for Windows x64 and 
 
 ## First launch
 
-Run `AirAE.exe`. Air AE adds itself to the current Windows user's startup applications by default and begins watching Downloads. Right-click its tray icon to open settings, manually extract ZIP files, open Downloads or the activity history, pause extraction, change startup behavior, or exit.
+Run `AirAE.exe`. Air AE adds itself to the current Windows user's startup applications by default and begins watching Downloads. The main Air AE window opens on launch. You can also open it by double-clicking the tray icon or right-clicking the tray icon and choosing Open Air AE. Existing ZIPs are left alone unless you manually choose Extract a ZIP now or Extract all ZIPs now.
 
 Settings and activity history are stored under `%LOCALAPPDATA%\AirAE`.
 
