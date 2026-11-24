@@ -105,7 +105,6 @@ internal sealed class AirAeContext : ApplicationContext
             EnableRaisingEvents = true
         };
         watcher.Created += OnZipChanged;
-        watcher.Changed += OnZipChanged;
         watcher.Renamed += (_, e) => QueueZip(e.FullPath);
 
         if (settings.StartWithWindows && !IsStartupEnabled()) SetStartup(true);
