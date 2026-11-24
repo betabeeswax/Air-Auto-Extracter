@@ -519,6 +519,7 @@ internal sealed class MainWindow : Form
 {
     private readonly Label status = new();
     private readonly Label details = new();
+    private readonly Label statusDescription = new();
     private readonly Button pause = new();
     private readonly Action openSettings, extractOne, extractAll, openDownloads, openHistory, togglePause;
     private readonly Func<bool> isPaused;
@@ -530,38 +531,71 @@ internal sealed class MainWindow : Form
         this.openSettings = openSettings; this.extractOne = extractOne; this.extractAll = extractAll;
         this.openDownloads = openDownloads; this.openHistory = openHistory; this.togglePause = togglePause;
         this.isPaused = isPaused; this.modeText = modeText; this.folderText = folderText;
-        Text = "Air AE"; StartPosition = FormStartPosition.CenterScreen; ClientSize = new Size(620, 440);
-        MinimumSize = new Size(560, 420); Font = new Font("Segoe UI", 10F); BackColor = Color.FromArgb(245, 247, 250);
-        var header = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = Color.FromArgb(28, 39, 58) };
-        header.Controls.Add(new Label { Text = "Air AE", ForeColor = Color.White, Font = new Font("Segoe UI", 25F, FontStyle.Bold), AutoSize = true, Location = new Point(24, 12) });
-        header.Controls.Add(new Label { Text = "Air Auto Extractor", ForeColor = Color.Gainsboro, AutoSize = true, Location = new Point(29, 62) });
-        var card = new Panel { Location = new Point(24, 120), Size = new Size(572, 105), BackColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
-        card.Controls.Add(new Label { Text = "AUTOMATIC EXTRACTION", ForeColor = Color.DimGray, Font = new Font("Segoe UI", 8F, FontStyle.Bold), AutoSize = true, Location = new Point(16, 12) });
-        status.Location = new Point(16, 34); status.AutoSize = true; status.Font = new Font("Segoe UI", 17F, FontStyle.Bold); card.Controls.Add(status);
-        card.Controls.Add(new Label { Text = "Only ZIPs downloaded after Air AE starts are extracted automatically.", ForeColor = Color.DimGray, AutoSize = true, Location = new Point(18, 75) });
-        var actions = new Label { Text = "QUICK ACTIONS", AutoSize = true, ForeColor = Color.DimGray, Font = new Font("Segoe UI", 8F, FontStyle.Bold), Location = new Point(26, 245) };
-        var one = MakeButton("Extract a ZIP now", 24, 270, 270); one.Click += (_, _) => extractOne();
-        var all = MakeButton("Extract all ZIPs now", 310, 270, 286); all.Click += (_, _) => extractAll();
-        var down = MakeButton("Open Downloads", 24, 326, 270); down.Click += (_, _) => openDownloads();
-        var history = MakeButton("Extraction history", 310, 326, 286); history.Click += (_, _) => openHistory();
-        pause.Location = new Point(24, 382); pause.Size = new Size(270, 38); pause.BackColor = Color.White; pause.Click += (_, _) => togglePause();
-        var config = MakeButton("Settings", 310, 382, 286); config.Click += (_, _) => openSettings();
-        details.Location = new Point(26, 430); details.AutoSize = true; details.ForeColor = Color.DimGray; details.Font = new Font("Segoe UI", 8F);
-        Controls.AddRange(new Control[] { header, card, actions, one, all, down, history, pause, config, details });
-        Resize += (_, _) => card.Width = ClientSize.Width - 48;
+
+        Text = "Air AE";
+        StartPosition = FormStartPosition.CenterScreen;
+        ClientSize = new Size(820, 590);
+        MinimumSize = new Size(720, 540);
+        Font = new Font("Segoe UI", 10F);
+        BackColor = Color.FromArgb(242, 245, 250);
+        ForeColor = Color.FromArgb(31, 41, 55);
+
+        var header = new Panel { Dock = DockStyle.Top, Height = 112, BackColor = Color.FromArgb(22, 34, 54), Padding = new Padding(28, 18, 28, 14) };
+        var brand = new Label { Text = "AIR AE", ForeColor = Color.White, Font = new Font("Segoe UI", 24F, FontStyle.Bold), AutoSize = true, Location = new Point(26, 12) };
+        var tagline = new Label { Text = "AIR AUTO EXTRACTOR  •  VERSION 3.0", ForeColor = Color.FromArgb(190, 205, 225), Font = new Font("Segoe UI", 9F, FontStyle.Bold), AutoSize = true, Location = new Point(30, 59) };
+        header.Controls.AddRange(new Control[] { brand, tagline });
+
+        var page = new Panel { Dock = DockStyle.Fill, Padding = new Padding(26, 22, 26, 20), AutoScroll = true };
+        var intro = new Label { Text = "Your downloads, handled.", Font = new Font("Segoe UI", 19F, FontStyle.Bold), AutoSize = true, Location = new Point(2, 4) };
+        var introSub = new Label { Text = "Air AE watches for new ZIP downloads and extracts them when they finish.", ForeColor = Color.FromArgb(100, 112, 130), AutoSize = true, Location = new Point(4, 42) };
+
+        var statusCard = new Panel { Location = new Point(0, 82), Size = new Size(740, 124), BackColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+        var statusCaption = new Label { Text = "AUTOMATIC EXTRACTION", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Color.FromArgb(110, 122, 140), AutoSize = true, Location = new Point(20, 15) };
+        status.Location = new Point(20, 39); status.AutoSize = true; status.Font = new Font("Segoe UI", 19F, FontStyle.Bold);
+        statusDescription.Location = new Point(22, 82); statusDescription.AutoSize = true; statusDescription.ForeColor = Color.FromArgb(100, 112, 130);
+        statusCard.Controls.AddRange(new Control[] { statusCaption, status, statusDescription });
+
+        var quickTitle = new Label { Text = "QUICK ACTIONS", Font = new Font("Segoe UI", 9F, FontStyle.Bold), ForeColor = Color.FromArgb(100, 112, 130), AutoSize = true, Location = new Point(2, 229) };
+        var one = MakeButton("Extract one ZIP…", 0, 257, 350, 52, Color.FromArgb(38, 99, 190), Color.White);
+        one.Click += (_, _) => extractOne();
+        var all = MakeButton("Extract all ZIPs manually", 366, 257, 350, 52, Color.White, Color.FromArgb(31, 41, 55));
+        all.Click += (_, _) => extractAll();
+        var down = MakeButton("Open Downloads folder", 0, 321, 350, 48, Color.White, Color.FromArgb(31, 41, 55));
+        down.Click += (_, _) => openDownloads();
+        var history = MakeButton("View extraction history", 366, 321, 350, 48, Color.White, Color.FromArgb(31, 41, 55));
+        history.Click += (_, _) => openHistory();
+
+        var settingsCard = new Panel { Location = new Point(0, 389), Size = new Size(716, 88), BackColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+        var settingsText = new Label { Text = "PREFERENCES", Font = new Font("Segoe UI", 8.5F, FontStyle.Bold), ForeColor = Color.FromArgb(110, 122, 140), AutoSize = true, Location = new Point(16, 12) };
+        details.Location = new Point(16, 39); details.AutoSize = true; details.ForeColor = Color.FromArgb(75, 87, 105); details.Font = new Font("Segoe UI", 9F);
+        settingsCard.Controls.AddRange(new Control[] { settingsText, details });
+
+        pause.Location = new Point(0, 493); pause.Size = new Size(350, 42); pause.FlatStyle = FlatStyle.Flat; pause.FlatAppearance.BorderSize = 0; pause.BackColor = Color.FromArgb(225, 234, 246); pause.ForeColor = Color.FromArgb(35, 75, 130); pause.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold); pause.Cursor = Cursors.Hand;
+        pause.Click += (_, _) => togglePause();
+        var config = MakeButton("Open settings", 366, 493, 350, 42, Color.FromArgb(22, 34, 54), Color.White);
+        config.Click += (_, _) => openSettings();
+
+        page.Controls.AddRange(new Control[] { intro, introSub, statusCard, quickTitle, one, all, down, history, settingsCard, pause, config });
+        page.Resize += (_, _) => { statusCard.Width = page.ClientSize.Width - 52; settingsCard.Width = page.ClientSize.Width - 52; };
+        Controls.Add(page);
+        Controls.Add(header);
         FormClosing += (_, e) => { if (!closingForExit && e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; Hide(); } };
         RefreshStatus();
     }
 
-    private static Button MakeButton(string text, int x, int y, int width) =>
-        new Button { Text = text, Location = new Point(x, y), Size = new Size(width, 42), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Cursor = Cursors.Hand };
+    private static Button MakeButton(string text, int x, int y, int width, int height, Color background, Color foreground) =>
+        new Button { Text = text, Location = new Point(x, y), Size = new Size(width, height), FlatStyle = FlatStyle.Flat, FlatAppearance = { BorderSize = 0 }, BackColor = background, ForeColor = foreground, Font = new Font("Segoe UI", 9.5F, FontStyle.Bold), Cursor = Cursors.Hand, TextAlign = ContentAlignment.MiddleLeft, Padding = new Padding(16, 0, 8, 0) };
 
     public void RefreshStatus()
     {
-        bool stopped = isPaused(); status.Text = stopped ? "Paused" : "Watching Downloads";
-        status.ForeColor = stopped ? Color.DarkOrange : Color.SeaGreen;
-        pause.Text = stopped ? "Resume automatic extraction" : "Pause automatic extraction";
-        details.Text = "Mode: " + modeText() + "    |    Destination: " + folderText();
+        bool stopped = isPaused();
+        status.Text = stopped ? "Paused" : "Watching for new ZIPs";
+        status.ForeColor = stopped ? Color.DarkOrange : Color.FromArgb(22, 145, 91);
+        statusDescription.Text = stopped
+            ? "Automatic extraction is paused. Your existing ZIP files are left untouched."
+            : "Only ZIPs newly added while Air AE is running are automatically extracted.";
+        pause.Text = stopped ? "  Resume automatic extraction" : "  Pause automatic extraction";
+        details.Text = "Mode: " + modeText() + "     •     Destination: " + folderText();
     }
 
     public void CloseForExit() { closingForExit = true; Close(); }
