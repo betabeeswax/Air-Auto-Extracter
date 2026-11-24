@@ -38,6 +38,7 @@ internal sealed class AirAeContext : ApplicationContext
     private readonly ConcurrentDictionary<string, byte> inProgress = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> completed = new(StringComparer.OrdinalIgnoreCase);
     private AirAeSettings settings = new();
+    private MainWindow? mainWindow;
 
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string AppName = "Air AE";
@@ -55,6 +56,7 @@ internal sealed class AirAeContext : ApplicationContext
         LoadState();
 
         var menu = new ContextMenuStrip();
+        menu.Items.Add("Open Air AE", null, (_, _) => ShowMainWindow());
         menu.Items.Add("Open Air AE settings", null, (_, _) => OpenSettings());
         menu.Items.Add("Extract a ZIP now...", null, (_, _) => ExtractNow());
         menu.Items.Add("Extract all ZIPs now", null, async (_, _) => await ExtractAllAsync());
@@ -69,6 +71,7 @@ internal sealed class AirAeContext : ApplicationContext
             SaveSettings();
             UpdateTrayText();
             Log(settings.Paused ? "Automatic extraction paused." : "Automatic extraction resumed.");
+            mainWindow?.RefreshStatus();
         };
         menu.Items.Add(pauseItem);
         var startupItem = new ToolStripMenuItem("Start with Windows")
@@ -93,7 +96,7 @@ internal sealed class AirAeContext : ApplicationContext
             ContextMenuStrip = menu,
             Visible = true
         };
-        tray.DoubleClick += (_, _) => OpenSettings();
+        tray.DoubleClick += (_, _) => ShowMainWindow();
 
         watcher = new FileSystemWatcher(downloads, "*.zip")
         {
@@ -113,9 +116,8 @@ internal sealed class AirAeContext : ApplicationContext
         if (settings.NotificationsEnabled)
             tray.ShowBalloonTip(2500, "Air AE is running", "New ZIP downloads will be extracted automatically.", ToolTipIcon.Info);
 
-        // Also check ZIPs already in Downloads in case Air AE starts after a download finishes.
-        foreach (string zip in Directory.EnumerateFiles(downloads, "*.zip", SearchOption.TopDirectoryOnly))
-            QueueZip(zip);
+        // Existing ZIPs are never scanned at startup. Only new ZIPs are extracted automatically.
+        ShowMainWindow();
     }
 
     private void OnZipChanged(object sender, FileSystemEventArgs e) => QueueZip(e.FullPath);
@@ -333,6 +335,7 @@ internal sealed class AirAeContext : ApplicationContext
         SetStartup(settings.StartWithWindows);
         SaveSettings();
         UpdateTrayText();
+        mainWindow?.RefreshStatus();
         Log("Settings updated.");
     }
 
@@ -359,6 +362,30 @@ internal sealed class AirAeContext : ApplicationContext
         foreach (string file in files)
             if (await ProcessZipAsync(file)) extracted++;
         Notify("Air AE finished", $"Extracted {extracted} of {files.Length} ZIP file(s).");
+    }
+
+    private void ShowMainWindow()
+    {
+        if (mainWindow == null || mainWindow.IsDisposed)
+            mainWindow = new MainWindow(
+                OpenSettings, ExtractNow, () => _ = ExtractAllAsync(),
+                () => OpenFolder(downloads), OpenLog, TogglePause,
+                () => settings.Paused,
+                () => settings.ExtractionMode == "DirectToFolder" ? "Direct to destination" : "Separate folder per ZIP",
+                GetOutputFolder);
+        mainWindow.RefreshStatus();
+        if (!mainWindow.Visible) mainWindow.Show();
+        if (mainWindow.WindowState == FormWindowState.Minimized) mainWindow.WindowState = FormWindowState.Normal;
+        mainWindow.Activate();
+    }
+
+    private void TogglePause()
+    {
+        settings.Paused = !settings.Paused;
+        SaveSettings();
+        UpdateTrayText();
+        Log(settings.Paused ? "Automatic extraction paused." : "Automatic extraction resumed.");
+        mainWindow?.RefreshStatus();
     }
 
     private void UpdateTrayText() =>
@@ -414,6 +441,7 @@ internal sealed class AirAeContext : ApplicationContext
     {
         watcher.EnableRaisingEvents = false;
         watcher.Dispose();
+        if (mainWindow != null && !mainWindow.IsDisposed) mainWindow.CloseForExit();
         tray.Visible = false;
         tray.Dispose();
         Log("Air AE exited.");
@@ -484,4 +512,58 @@ internal sealed class SettingsForm : Form
         AcceptButton = save;
         CancelButton = cancel;
     }
+}
+
+
+
+internal sealed class MainWindow : Form
+{
+    private readonly Label status = new();
+    private readonly Label details = new();
+    private readonly Button pause = new();
+    private readonly Action openSettings, extractOne, extractAll, openDownloads, openHistory, togglePause;
+    private readonly Func<bool> isPaused;
+    private readonly Func<string> modeText, folderText;
+    private bool closingForExit;
+
+    public MainWindow(Action openSettings, Action extractOne, Action extractAll, Action openDownloads, Action openHistory, Action togglePause, Func<bool> isPaused, Func<string> modeText, Func<string> folderText)
+    {
+        this.openSettings = openSettings; this.extractOne = extractOne; this.extractAll = extractAll;
+        this.openDownloads = openDownloads; this.openHistory = openHistory; this.togglePause = togglePause;
+        this.isPaused = isPaused; this.modeText = modeText; this.folderText = folderText;
+        Text = "Air AE"; StartPosition = FormStartPosition.CenterScreen; ClientSize = new Size(620, 440);
+        MinimumSize = new Size(560, 420); Font = new Font("Segoe UI", 10F); BackColor = Color.FromArgb(245, 247, 250);
+        var header = new Panel { Dock = DockStyle.Top, Height = 100, BackColor = Color.FromArgb(28, 39, 58) };
+        header.Controls.Add(new Label { Text = "Air AE", ForeColor = Color.White, Font = new Font("Segoe UI", 25F, FontStyle.Bold), AutoSize = true, Location = new Point(24, 12) });
+        header.Controls.Add(new Label { Text = "Air Auto Extractor", ForeColor = Color.Gainsboro, AutoSize = true, Location = new Point(29, 62) });
+        var card = new Panel { Location = new Point(24, 120), Size = new Size(572, 105), BackColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
+        card.Controls.Add(new Label { Text = "AUTOMATIC EXTRACTION", ForeColor = Color.DimGray, Font = new Font("Segoe UI", 8F, FontStyle.Bold), AutoSize = true, Location = new Point(16, 12) });
+        status.Location = new Point(16, 34); status.AutoSize = true; status.Font = new Font("Segoe UI", 17F, FontStyle.Bold); card.Controls.Add(status);
+        card.Controls.Add(new Label { Text = "Only ZIPs downloaded after Air AE starts are extracted automatically.", ForeColor = Color.DimGray, AutoSize = true, Location = new Point(18, 75) });
+        var actions = new Label { Text = "QUICK ACTIONS", AutoSize = true, ForeColor = Color.DimGray, Font = new Font("Segoe UI", 8F, FontStyle.Bold), Location = new Point(26, 245) };
+        var one = MakeButton("Extract a ZIP now", 24, 270, 270); one.Click += (_, _) => extractOne();
+        var all = MakeButton("Extract all ZIPs now", 310, 270, 286); all.Click += (_, _) => extractAll();
+        var down = MakeButton("Open Downloads", 24, 326, 270); down.Click += (_, _) => openDownloads();
+        var history = MakeButton("Extraction history", 310, 326, 286); history.Click += (_, _) => openHistory();
+        pause.Location = new Point(24, 382); pause.Size = new Size(270, 38); pause.BackColor = Color.White; pause.Click += (_, _) => togglePause();
+        var config = MakeButton("Settings", 310, 382, 286); config.Click += (_, _) => openSettings();
+        details.Location = new Point(26, 430); details.AutoSize = true; details.ForeColor = Color.DimGray; details.Font = new Font("Segoe UI", 8F);
+        Controls.AddRange(new Control[] { header, card, actions, one, all, down, history, pause, config, details });
+        Resize += (_, _) => card.Width = ClientSize.Width - 48;
+        FormClosing += (_, e) => { if (!closingForExit && e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; Hide(); } };
+        RefreshStatus();
+    }
+
+    private static Button MakeButton(string text, int x, int y, int width) =>
+        new Button { Text = text, Location = new Point(x, y), Size = new Size(width, 42), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Cursor = Cursors.Hand };
+
+    public void RefreshStatus()
+    {
+        bool stopped = isPaused(); status.Text = stopped ? "Paused" : "Watching Downloads";
+        status.ForeColor = stopped ? Color.DarkOrange : Color.SeaGreen;
+        pause.Text = stopped ? "Resume automatic extraction" : "Pause automatic extraction";
+        details.Text = "Mode: " + modeText() + "    |    Destination: " + folderText();
+    }
+
+    public void CloseForExit() { closingForExit = true; Close(); }
 }
